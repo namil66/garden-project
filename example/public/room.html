@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head> 
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title> main </title>
+    <link href="room.css" rel="stylesheet"> </link>
+<style>
+
+</style>
+</head> 
+
+<input type="text" id="name" size="30" placeholder="이름을 입력해주세요">
+<hr>
+
+<h2 style="top : 50px; left : 200px; position : fixed;"><방 생성></h2>
+
+<div id="position">
+<p> 진영 </p>
+<input type="radio" id="random" name="color" checked>
+<label for="random">랜덤</label>
+
+<input type="radio" id="green" name="color">
+<label for="green">녹색 (선)</label>
+
+<input type="radio" id="red" name="color">
+<label for="red">적색 (후)</label>
+
+<hr width="500px">
+</div>
+
+
+
+
+<div id="timeset">
+<p> 시간 </p>
+<input type="text" id="time" name="t" value="30">
+<label for="t">10 ~ 90 초 사이</label>
+<hr width="500px">
+</div>
+
+<div id="ID">
+<p>방 ID</p>
+<p id="IDshow"></p>
+<button onclick="get_ID()">재생성</button>
+<hr width="500px">
+</div>
+
+<div id="setpassword">
+<p>비밀번호</p>
+<p id="IDshow"></p>
+<input type="text" id="password" name="p" placeholder="비밀번호 없음">
+</div>
+
+<button id="create_room">방 만들기</button>
+
+
+<hr class="line">
+
+
+<h2 style="top : 50px; left : 800px; position : fixed;"><방 입장></h2>
+
+
+<input id="join_ID" type="text" placeholder="방 ID 입력">
+<input id="join_password" type="text" placeholder="방 비밀번호 입력">
+
+<button id="join_room">방 참여하기</button>
+
+
+<script>
+const IDshow = document.getElementById("IDshow");
+
+let ID;
+
+while (true){
+    ID = Math.floor(10000*Math.random());
+    if (ID < 1000){
+        continue;
+    } else {
+        break;
+    }
+}
+IDshow.innerText = ID;
+
+function get_ID(){
+    while (true){
+        ID = Math.floor(10000*Math.random());
+        if (ID < 1000){
+            continue;
+        } else {
+            break;
+        }
+    }
+    IDshow.innerText = ID;
+    return;
+    }
+
+
+
+//console.log(name, random, green, red, time, password, color);
+
+
+const create_room = document.getElementById("create_room");
+const join_room = document.getElementById("join_room");
+
+
+
+// 서버 요청
+
+create_room.addEventListener("click", (e) => {
+
+
+const name = document.getElementById("name").value;
+const random = document.getElementById("random").checked;
+const green = document.getElementById("green").checked;
+const red = document.getElementById("red").checked;
+const time = document.getElementById("time").value;
+const password = document.getElementById("password").value;
+
+
+
+function radio(){
+    if (random === true){
+        return 'random';
+    } else if (green === true){
+        return 'green';
+    }else if(red === true){
+        return 'red';
+    }
+}
+
+let color = radio();
+
+
+fetch("/", {
+    method: "POST",                     // POST 방식
+    headers: {
+    "Content-Type": "application/json" // 보낼 데이터 형식
+    },
+    body: JSON.stringify({              // 실제로 보낼 데이터
+    host : true,
+    name: name,
+    color: color,
+    time: time,
+    ID: ID,
+    password: password
+    })
+})
+.then(res => res.json())              // 서버 응답(JSON) 받기
+.then(data => {
+    console.log("서버 응답:", data);
+})
+.catch(err => console.error("에러:", err));
+
+
+window.location.href = 'http://localhost:999/'+ID;
+});
+
+
+
+
+
+
+
+join_room.addEventListener('click', (e) => {
+
+const name = document.getElementById("name").value;
+const join_ID = document.getElementById("join_ID").value;
+const join_password = document.getElementById("join_password").value;
+
+
+fetch("/", {
+    method : 'POST',
+    headers : {
+        "Content-Type" : "application/json"
+    },
+    body : JSON.stringify({
+        host : false,
+        name : name,
+        ID : join_ID,
+        password : join_password
+    })
+})
+.then(res => res.json())
+.then(data => {
+    console.log("서버 응답:", data);
+})
+.catch(err => console.error("에러:", err));
+
+
+
+
+window.location.href = 'http://localhost:999/'+join_ID;
+})
+
+</script>
+
+</body>
+
+</html>
+
