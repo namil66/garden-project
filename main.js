@@ -1,0 +1,795 @@
+// 타이머 관리
+
+const game_timer = document.getElementById("game_timer");
+
+let timer = null;
+let time = 30;
+
+function timer_func() {
+  if (!timer) {
+    timer = setInterval(timer_event, 100);
+  }
+}
+
+function timer_event() {
+  if (time > 10) {
+    time -= 0.1;
+    game_timer.innerText = Math.ceil(time);
+  } else if (time > 0) {
+    time -= 0.1;
+    game_timer.innerText = Math.ceil(10 * time) / 10;
+  } else {
+    if (game_turn === "green") {
+      end("red");
+    } else if (game_turn === "red") {
+      end("green");
+    }
+  }
+}
+
+function timer_process() {
+  time = 30;
+  if (game_turn === "green") {
+    game_timer.style.left = 1300 + "px";
+    game_timer.style.top = 100 + "px";
+  } else if (game_turn === "red") {
+    game_timer.style.left = 600 + "px";
+    game_timer.style.top = 100 + "px";
+  }
+}
+
+// 턴 관리
+let turn = ["green", "red"];
+let game_turn = "red";
+let game_turn_num = 0;
+let game_log = [[[], []]];
+
+function turn_process() {
+  if (game_turn === "green") {
+    // 게임 로그 기록
+    game_log[game_turn_num] = new Array();
+    game_log[game_turn_num][0] = new Array();
+    game_log[game_turn_num][1] = new Array();
+    game_log[game_turn_num][0].push(boardState);
+    game_log[game_turn_num][0].push(POWState_1);
+    game_log[game_turn_num][0].push(POWState_2);
+    game_turn = "red";
+
+    // 기물 락
+    if (end_boolean === false) {
+      for (let i in pieces_obj) {
+        if (Number(i) > 0) {
+          pieces_obj[i].style.pointerEvents = "none";
+        } else if (Number(i) < 0) {
+          pieces_obj[i].style.pointerEvents = "auto";
+        }
+      }
+    }
+    if (end_boolean !== true) {
+      timer_process();
+    }
+  } else if (game_turn === "red") {
+    game_log[game_turn_num][1].push(boardState);
+    game_log[game_turn_num][1].push(POWState_1);
+    game_log[game_turn_num][1].push(POWState_2);
+    game_turn = "green";
+    game_turn_num += 1;
+
+    if (end_boolean === false) {
+      for (let i in pieces_obj) {
+        if (Number(i) < 0) {
+          pieces_obj[i].style.pointerEvents = "none";
+        } else if (Number(i) > 0) {
+          pieces_obj[i].style.pointerEvents = "auto";
+        }
+      }
+    }
+    if (end_boolean !== true) {
+      timer_process();
+    }
+  }
+}
+
+// 게임 종료
+let end_boolean = false;
+function end(who) {
+  for (let i in pieces_obj) {
+    pieces_obj[i].style.pointerEvents = "none";
+  }
+  end_boolean = true;
+
+  console.log("game end. " + who + " win.");
+  console.log(game_log);
+
+  clearInterval(timer);
+  timer = null;
+}
+
+// 승리 조건 : 상대진영 머무르기
+let red_king_stay = 0;
+let green_king_stay = 0;
+
+// 좌표 설정. A1 ~ C4
+let x_coordinate = ["A", "B", "C"];
+let y_coordinate = [1, 2, 3, 4];
+
+/*
+let coordinates = new Array;
+for (let i in x_coordinate){
+    for (let j in y_coordinate){
+        coordinates.push(x_coordinate[i]+y_coordinate[j]);
+    }
+}
+*/
+let coordinates = [
+  "A1",
+  "A2",
+  "A3",
+  "A4",
+  "B1",
+  "B2",
+  "B3",
+  "B4",
+  "C1",
+  "C2",
+  "C3",
+  "C4",
+];
+
+// 시스템 상 기물 위치 (보드판, 포로판)
+// 양수 : 녹 , 음수 : 적 , n.5 : 잡은 포로 , 0 : 기물없음 , 1 : 자 , 2 : 상 , 3 : 장 , 4 : 후 , 5 : 왕
+let boardState = {
+  A4: -3,
+  B4: -5,
+  C4: -2,
+  A3: 0,
+  B3: -1,
+  C3: 0,
+  A2: 0,
+  B2: 1,
+  C2: 0,
+  A1: 2,
+  B1: 5,
+  C1: 3,
+};
+
+let POWState_1 = {
+  green_POW1: 0,
+  green_POW2: 0,
+  green_POW3: 0,
+  green_POW4: 0,
+  green_POW5: 0,
+  green_POW6: 0,
+};
+let POWState_2 = {
+  red_POW1: 0,
+  red_POW2: 0,
+  red_POW3: 0,
+  red_POW4: 0,
+  red_POW5: 0,
+  red_POW6: 0,
+};
+
+// 기물의 좌표 조회 함수
+function locate(n) {
+  for (let i in Object.assign({}, boardState, POWState_1, POWState_2)) {
+    if (n !== 0) {
+      if (boardState[i] === n) {
+        return i;
+      } else if (POWState_1[i] === n) {
+        return i;
+      } else if (POWState_2[i] === n) {
+        return i;
+      }
+    }
+  }
+}
+
+// 기물의 이동 가능 좌표 조회 함수
+function canMove(n) {
+  function moveArray(n) {
+    // 기물 종류마다 움직이는 방향 정의 [x, y]
+    let move_range = [];
+    if ([-5, 5].includes(n)) {
+      // 왕
+      move_range = [
+        [-1, -1],
+        [-1, 0],
+        [-1, 1],
+        [0, -1],
+        [0, 1],
+        [1, -1],
+        [1, 0],
+        [1, 1],
+      ];
+      return move_range;
+    } else if ([4, 4.5].includes(n)) {
+      // 녹색 후
+      move_range = [
+        [-1, 0],
+        [-1, 1],
+        [0, -1],
+        [0, 1],
+        [1, 0],
+        [1, 1],
+      ];
+      return move_range;
+    } else if ([-4, -4.5].includes(n)) {
+      // 적색 후
+      move_range = [
+        [-1, -1],
+        [-1, 0],
+        [0, -1],
+        [0, 1],
+        [1, -1],
+        [1, 0],
+      ];
+      return move_range;
+    } else if ([-3, 3, -3.5, 3.5].includes(n)) {
+      // 장
+      move_range = [
+        [-1, 0],
+        [0, -1],
+        [0, 1],
+        [1, 0],
+      ];
+      return move_range;
+    } else if ([-2, 2, -2.5, 2.5].includes(n)) {
+      // 상
+      move_range = [
+        [-1, -1],
+        [1, -1],
+        [-1, 1],
+        [1, 1],
+      ];
+      return move_range;
+    } else if ([1, 1.5].includes(n)) {
+      // 녹색 자
+      move_range = [[0, 1]];
+      return move_range;
+    } else if ([-1, -1.5].includes(n)) {
+      // 적색 자
+      move_range = [[0, -1]];
+      return move_range;
+    }
+  }
+
+  let result1 = [];
+  let result2 = []; // 말 이동 가능 좌표
+  let result3 = []; // 최종 이동 가능 좌표
+  let result4 = []; // 포로 이동 가능 좌표
+
+  if (locate(n) in boardState) {
+    for (let i in moveArray(n)) {
+      // result1, 이동 가능 모든 좌표
+      let result =
+        x_coordinate[
+          x_coordinate.indexOf(locate(n).charAt(0)) + moveArray(n)[i][0]
+        ] +
+        y_coordinate[
+          y_coordinate.indexOf(Number(locate(n).charAt(1))) + moveArray(n)[i][1]
+        ]; // 이동가능한 모든 경우
+      result1.push(result);
+    }
+    for (let i in result1) {
+      // result2, 그 중 실현 가능한 좌표
+      if (coordinates.includes(result1[i])) {
+        result2.push(result1[i]);
+      }
+    }
+    if (n < 0) {
+      // 적 기물의 경우
+      for (let i in result2) {
+        // result3, 같은 팀의 말이 존재하는 곳 제외.
+        if (boardState[result2[i]] >= 0) {
+          result3.push(result2[i]);
+        }
+      }
+    } else if (n > 0) {
+      // 녹 기물의 경우
+      for (let i in result2) {
+        // result3, 같은 팀의 말이 존재하는 곳 제외.
+        if (boardState[result2[i]] <= 0) {
+          result3.push(result2[i]);
+        }
+      }
+    }
+    return result3;
+    //return console.log(result3);
+  } else if (locate(n) in POWState_1) {
+    let commonArea = ["A1", "A2", "A3", "B1", "B2", "B3", "C1", "C2", "C3"];
+    for (let i in commonArea) {
+      if (boardState[commonArea[i]] === 0) {
+        result4.push(commonArea[i]);
+      }
+    }
+    return result4;
+  } else if (locate(n) in POWState_2) {
+    let commonArea = ["A2", "A3", "A4", "B2", "B3", "B4", "C2", "C3", "C4"];
+    for (let i in commonArea) {
+      if (boardState[commonArea[i]] === 0) {
+        result4.push(commonArea[i]);
+      }
+    }
+    return result4;
+  }
+}
+
+// <외부 로직>
+
+// backboard 만들기
+for (let i in coordinates) {
+  document.write("<div id='backboard_" + coordinates[i] + "' ></div>");
+}
+
+// moveTo 만들기 → moveTo 구역에 기물을 드래그하여 이벤트 실행.
+for (let i in coordinates) {
+  document.write(
+    "<div id='moveTo" + coordinates[i] + "' style='display: none;'></div>"
+  );
+}
+
+// moveTo 지정하기 (동적변수 할당 실패)
+const moveToA1 = document.getElementById("moveToA1");
+const moveToA2 = document.getElementById("moveToA2");
+const moveToA3 = document.getElementById("moveToA3");
+const moveToA4 = document.getElementById("moveToA4");
+const moveToB1 = document.getElementById("moveToB1");
+const moveToB2 = document.getElementById("moveToB2");
+const moveToB3 = document.getElementById("moveToB3");
+const moveToB4 = document.getElementById("moveToB4");
+const moveToC1 = document.getElementById("moveToC1");
+const moveToC2 = document.getElementById("moveToC2");
+const moveToC3 = document.getElementById("moveToC3");
+const moveToC4 = document.getElementById("moveToC4");
+
+// 좌표이동 변수 객체 생성
+let moveTo_obj = {
+  A1: moveToA1,
+  A2: moveToA2,
+  A3: moveToA3,
+  A4: moveToA4,
+  B1: moveToB1,
+  B2: moveToB2,
+  B3: moveToB3,
+  B4: moveToB4,
+  C1: moveToC1,
+  C2: moveToC2,
+  C3: moveToC3,
+  C4: moveToC4,
+};
+
+// 기물 지정하기
+const red_king = document.getElementById("red_king");
+const red_ja = document.getElementById("red_ja");
+const red_ja_2 = document.getElementById("red_ja_2");
+const red_sang = document.getElementById("red_sang");
+const red_sang_2 = document.getElementById("red_sang_2");
+const red_jang = document.getElementById("red_jang");
+const red_jang_2 = document.getElementById("red_jang_2");
+const red_hu = document.getElementById("red_hu");
+const red_hu_2 = document.getElementById("red_hu_2");
+
+const green_king = document.getElementById("green_king");
+const green_ja = document.getElementById("green_ja");
+const green_ja_2 = document.getElementById("green_ja_2");
+const green_sang = document.getElementById("green_sang");
+const green_sang_2 = document.getElementById("green_sang_2");
+const green_jang = document.getElementById("green_jang");
+const green_jang_2 = document.getElementById("green_jang_2");
+const green_hu = document.getElementById("green_hu");
+const green_hu_2 = document.getElementById("green_hu_2");
+
+// 기물 변수 객체 생성
+let pieces_obj = {
+  "-5": red_king,
+  "-4.5": red_hu_2,
+  "-4": red_hu,
+  "-3.5": red_jang_2,
+  "-3": red_jang,
+  "-2.5": red_sang_2,
+  "-2": red_sang,
+  "-1.5": red_ja_2,
+  "-1": red_ja,
+  1: green_ja,
+  1.5: green_ja_2,
+  2: green_sang,
+  2.5: green_sang_2,
+  3: green_jang,
+  3.5: green_jang_2,
+  4: green_hu,
+  4.5: green_hu_2,
+  5: green_king,
+};
+
+// canMove + moveTo_obj -> 이동 가능한 좌표의 moveTo를 display = true
+function moveTo_display(n, onoff) {
+  if (onoff == true) {
+    // on (mousedown)
+    for (let i in canMove(n)) {
+      moveTo_obj[canMove(n)[i]].style.display = "block";
+    }
+  } else if (onoff == false) {
+    // off (mouseup)
+    for (let i in canMove(n)) {
+      moveTo_obj[canMove(n)[i]].style.display = "none";
+    }
+  }
+}
+
+// 현재 움직이는 기물 정보
+let select_piece;
+
+// 모든 기물들의 클릭 이벤트 부여
+for (let i in pieces_obj) {
+  pieces_obj[i].addEventListener("mousedown", (e) => {
+    moveTo_display(select_piece, false);
+    select_piece = Number(i);
+    moveTo_display(Number(i), true);
+  });
+
+  pieces_obj[i].addEventListener("dragend", (e) => {
+    moveTo_display(Number(i), false);
+  });
+}
+
+// red_king.addEventListener("mousedown", (e) => {
+//     select_piece = [-5]
+//     moveTo_display(-5, true);
+
+// })
+// red_king.addEventListener("dragend", (e) => {
+//     moveTo_display(-5, false);
+
+// })
+
+// 이동 칸 설정 / 드래그 앤 드롭 설정 (movetoA1 ~ movetoC4)
+
+// 기물들이 위치할 고정좌표 [x,y] (단위px)
+const boardPiece_Coordinate = {
+  A1: [694, 651],
+  A2: [694, 471],
+  A3: [694, 291],
+  A4: [694, 110],
+  B1: [874, 651],
+  B2: [874, 471],
+  B3: [874, 291],
+  B4: [874, 110],
+  C1: [1055, 651],
+  C2: [1055, 471],
+  C3: [1055, 291],
+  C4: [1055, 110],
+};
+
+const POW1Piece_Coordinate = {
+  green_POW1: [1300, 720],
+  green_POW2: [1300, 620],
+  green_POW3: [1300, 520],
+  green_POW4: [1300, 420],
+  green_POW5: [1300, 320],
+  green_POW6: [1300, 220],
+};
+const POW2Piece_Coordinate = {
+  red_POW1: [510, 100],
+  red_POW2: [510, 200],
+  red_POW3: [510, 300],
+  red_POW4: [510, 400],
+  red_POW5: [510, 500],
+  red_POW6: [510, 600],
+};
+
+function board_loading(S, P1, P2) {
+  // 인자는 boardState, POWState_1, POWState_2
+  for (let i in S) {
+    if (S[i] !== 0) {
+      pieces_obj[String(S[i])].style.width = 160 + "px";
+      pieces_obj[String(S[i])].style.height = 160 + "px";
+      pieces_obj[String(S[i])].style.left = boardPiece_Coordinate[i][0] + "px";
+      pieces_obj[String(S[i])].style.top = boardPiece_Coordinate[i][1] + "px";
+    }
+  }
+
+  for (let j in P1) {
+    // 포로석으로 이동 green_POW1~6
+    if (P1[j] !== 0) {
+      pieces_obj[String(P1[j])].style.width = 100 + "px";
+      pieces_obj[String(P1[j])].style.height = 100 + "px";
+      pieces_obj[String(P1[j])].style.left = POW1Piece_Coordinate[j][0] + "px";
+      pieces_obj[String(P1[j])].style.top = POW1Piece_Coordinate[j][1] + "px";
+    }
+  }
+  for (let k in P2) {
+    // 포로석으로 이동 red_POW1~6
+    if (P2[k] !== 0) {
+      pieces_obj[String(P2[k])].style.width = 100 + "px";
+      pieces_obj[String(P2[k])].style.height = 100 + "px";
+      pieces_obj[String(P2[k])].style.left = POW2Piece_Coordinate[k][0] + "px";
+      pieces_obj[String(P2[k])].style.top = POW2Piece_Coordinate[k][1] + "px";
+    }
+  }
+
+  for (let z in pieces_obj) {
+    // 좌표에 할당받지 못한 기물 이동
+    if (
+      !Object.values(
+        Object.assign({}, boardState, POWState_1, POWState_2)
+      ).includes(Number(z))
+    ) {
+      pieces_obj[z].style.left = 9999 + "px";
+      pieces_obj[z].style.top = 9999 + "px";
+    }
+  }
+}
+
+// 포로석 정렬 함수
+function sort_pieces(POW) {
+  // 인자는 POWstate
+  let value = [];
+  for (let i in POW) {
+    if (POW[i] !== 0) {
+      value.push(POW[i]);
+      POW[i] = 0;
+    }
+  }
+  for (let j in value) {
+    POW[game_turn + "_POW" + (Number(j) + 1)] = value[j];
+  }
+}
+
+// 게임 시작
+turn_process();
+timer_func();
+
+for (let i in moveTo_obj) {
+  // moveTo 이동Event설정
+
+  moveTo_obj[i].addEventListener("dragover", (e) => {
+    e.preventDefault();
+  });
+
+  moveTo_obj[i].addEventListener("drop", (e) => {
+    e.preventDefault();
+    moveTo_display(select_piece, false);
+
+    if (boardState[i] === 0) {
+      // 빈곳으로 이동 시
+      if (locate(select_piece) in boardState) {
+        boardState[locate(select_piece)] = 0; // 기존에 위치한 곳은 비워두기
+      } else if (locate(select_piece) in POWState_1) {
+        POWState_1[locate(select_piece)] = 0;
+        sort_pieces(POWState_1);
+      } else if (locate(select_piece) in POWState_2) {
+        POWState_2[locate(select_piece)] = 0;
+        sort_pieces(POWState_2);
+      }
+      boardState[i] = select_piece; // 잡은 곳으로 이동
+    } else {
+      if (select_piece > 0) {
+        // 녹색 기물이 잡았을 떄
+
+        for (let j in POWState_1) {
+          // 잡은 기물 포로객체로
+          if (POWState_1[j] === 0) {
+            if (boardState[i] === -4) {
+              POWState_1[j] = 1.5;
+            } else if (boardState[i] === -4.5) {
+              POWState_1[j] = 1;
+            } else if (boardState[i] === -5) {
+              end("green");
+            } else if (Number.isInteger(boardState[i])) {
+              // n.5 구분
+              POWState_1[j] = -(boardState[i] - 0.5);
+            } else {
+              POWState_1[j] = -(boardState[i] + 0.5);
+            }
+
+            break;
+          }
+        }
+        boardState[locate(select_piece)] = 0; // 기존에 위치한 곳은 비워두기
+        boardState[i] = select_piece; // 잡은 곳으로 이동
+      } else if (select_piece < 0) {
+        // 적색 기물이 잡았을 떄
+
+        for (let j in POWState_2) {
+          // 잡은 기물 포로객체로
+          if (POWState_2[j] === 0) {
+            if (boardState[i] === 4) {
+              POWState_2[j] = -1.5;
+            } else if (boardState[i] === 4.5) {
+              POWState_2[j] = -1;
+            } else if (boardState[i] === 5) {
+              end("red");
+            } else if (Number.isInteger(boardState[i])) {
+              // n.5 구분
+              POWState_2[j] = -(boardState[i] + 0.5);
+            } else {
+              POWState_2[j] = -(boardState[i] - 0.5);
+            }
+
+            break;
+          }
+        }
+        boardState[locate(select_piece)] = 0; // 기존에 위치한 곳은 비워두기
+        boardState[i] = select_piece; // 잡은 곳으로 이동
+      }
+    }
+
+    let area_green = ["A1", "B1", "C1"];
+    let area_red = ["A4", "B4", "C4"];
+
+    for (let i in area_green) {
+      // 자 → 후 승급
+      if (boardState[area_green[i]] === -1) {
+        boardState[area_green[i]] = -4;
+      } else if (boardState[area_green[i]] === -1.5) {
+        boardState[area_green[i]] = -4.5;
+      } else if (boardState[area_red[i]] === 1) {
+        boardState[area_red[i]] = 4;
+      } else if (boardState[area_red[i]] === 1.5) {
+        boardState[area_red[i]] = 4.5;
+      }
+    }
+
+    // 녹색 진영에 적색 왕
+    if (
+      boardState["A1"] !== -5 &&
+      boardState["B1"] !== -5 &&
+      boardState["C1"] !== -5
+    ) {
+      red_king_stay = 0;
+    } else {
+      red_king_stay += 1;
+      if (red_king_stay === 2) {
+        end("red");
+      }
+    }
+    // 적색 진영에 녹색 왕
+    if (
+      boardState["A4"] !== 5 &&
+      boardState["B4"] !== 5 &&
+      boardState["C4"] !== 5
+    ) {
+      green_king_stay = 0;
+    } else {
+      green_king_stay += 1;
+      if (green_king_stay === 2) {
+        end("green");
+      }
+    }
+    turn_process();
+    console.log(boardState, POWState_1, POWState_2);
+    board_loading(boardState, POWState_1, POWState_2);
+  });
+
+  // 클릭 시에도 동일 기능 적용
+  moveTo_obj[i].addEventListener("click", (e) => {
+    e.preventDefault();
+    moveTo_display(select_piece, false);
+
+    if (boardState[i] === 0) {
+      // 빈곳으로 이동 시
+      if (locate(select_piece) in boardState) {
+        boardState[locate(select_piece)] = 0; // 기존에 위치한 곳은 비워두기
+      } else if (locate(select_piece) in POWState_1) {
+        POWState_1[locate(select_piece)] = 0;
+        sort_pieces(POWState_1);
+      } else if (locate(select_piece) in POWState_2) {
+        POWState_2[locate(select_piece)] = 0;
+        sort_pieces(POWState_2);
+      }
+      boardState[i] = select_piece; // 잡은 곳으로 이동
+    } else {
+      if (select_piece > 0) {
+        // 녹색 기물이 잡았을 떄
+
+        for (let j in POWState_1) {
+          // 잡은 기물 포로객체로
+          if (POWState_1[j] === 0) {
+            if (boardState[i] === -4) {
+              POWState_1[j] = 1.5;
+            } else if (boardState[i] === -4.5) {
+              POWState_1[j] = 1;
+            } else if (boardState[i] === -5) {
+              end("green");
+            } else if (Number.isInteger(boardState[i])) {
+              // n.5 구분
+              POWState_1[j] = -(boardState[i] - 0.5);
+            } else {
+              POWState_1[j] = -(boardState[i] + 0.5);
+            }
+
+            break;
+          }
+        }
+        boardState[locate(select_piece)] = 0; // 기존에 위치한 곳은 비워두기
+        boardState[i] = select_piece; // 잡은 곳으로 이동
+      } else if (select_piece < 0) {
+        // 적색 기물이 잡았을 떄
+
+        for (let j in POWState_2) {
+          // 잡은 기물 포로객체로
+          if (POWState_2[j] === 0) {
+            if (boardState[i] === 4) {
+              POWState_2[j] = -1.5;
+            } else if (boardState[i] === 4.5) {
+              POWState_2[j] = -1;
+            } else if (boardState[i] === 5) {
+              end("red");
+            } else if (Number.isInteger(boardState[i])) {
+              // n.5 구분
+              POWState_2[j] = -(boardState[i] + 0.5);
+            } else {
+              POWState_2[j] = -(boardState[i] - 0.5);
+            }
+
+            break;
+          }
+        }
+        boardState[locate(select_piece)] = 0; // 기존에 위치한 곳은 비워두기
+        boardState[i] = select_piece; // 잡은 곳으로 이동
+      }
+    }
+
+    let area_green = ["A1", "B1", "C1"];
+    let area_red = ["A4", "B4", "C4"];
+
+    for (let i in area_green) {
+      // 자 → 후 승급
+      if (boardState[area_green[i]] === -1) {
+        boardState[area_green[i]] = -4;
+      } else if (boardState[area_green[i]] === -1.5) {
+        boardState[area_green[i]] = -4.5;
+      } else if (boardState[area_red[i]] === 1) {
+        boardState[area_red[i]] = 4;
+      } else if (boardState[area_red[i]] === 1.5) {
+        boardState[area_red[i]] = 4.5;
+      }
+    }
+
+    // 녹색 진영에 적색 왕
+    if (
+      boardState["A1"] !== -5 &&
+      boardState["B1"] !== -5 &&
+      boardState["C1"] !== -5
+    ) {
+      red_king_stay = 0;
+    } else {
+      red_king_stay += 1;
+      if (red_king_stay === 2) {
+        end("red");
+      }
+    }
+    // 적색 진영에 녹색 왕
+    if (
+      boardState["A4"] !== 5 &&
+      boardState["B4"] !== 5 &&
+      boardState["C4"] !== 5
+    ) {
+      green_king_stay = 0;
+    } else {
+      green_king_stay += 1;
+      if (green_king_stay === 2) {
+        end("green");
+      }
+    }
+    turn_process();
+    console.log(boardState, POWState_1, POWState_2);
+    board_loading(boardState, POWState_1, POWState_2);
+  });
+}
+
+// 아래 코드로부터 +기능 / +반복
+// moveToA3.addEventListener("dragover", (e) => {
+//     e.preventDefault();
+// })
+// moveToA3.addEventListener("drop", (e) => {
+//     e.preventDefault();
+//     red_king.style.left = 694 + 'px';
+//     red_king.style.top = 651 + 'px';
+// })
+// moveToA3.addEventListener("click", (e) => {
+//     e.preventDefault();
+//     red_king.style.left = 694 + 'px';
+//     red_king.style.top = 651 + 'px';
+// })
